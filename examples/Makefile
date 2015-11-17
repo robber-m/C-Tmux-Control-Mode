@@ -1,6 +1,6 @@
 CC     = gcc
 CFLAGS = -Wall -Werror -g -I../
-EXES   = print_layout_changes
+EXES   = $(shell find . -name '*.c' | sed 's/\.c//g')
 
 all: $(EXES)
 clean:
