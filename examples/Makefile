@@ -2,7 +2,7 @@ CC     = gcc
 CFLAGS = -Wall -Werror -g -I../
 EXES   = print_layout_changes
 
-all: print_layout_changes
+all: $(EXES)
 clean:
 	rm -f *.o $(EXES)
 
