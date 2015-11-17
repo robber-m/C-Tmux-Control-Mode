@@ -1,10 +1,12 @@
-CFLAGS=-I.
+CFLAGS=-Wall -Werror -g
 
-print_layout_changes: tmux_event_lib.o
-		$(CC) -o examples/$@ examples/$@.c $< $(CFLAGS)
-
-%.o: %.c
-		$(CC) -c -o $@ $< $(CFLAGS)
+.PHONY: examples                                                                                                                                                                                                                                                                      
+examples: tmux_event_lib.o
+	$(MAKE) -C $@
 
 clean:
-	rm -f *.o examples/*.o examples/print_layout_changes
+	$(MAKE) -C examples clean
+	rm -f tmux_event_lib.o
+
+%.o: %.c
+		$(CC) -c -o $@ $^ $(CFLAGS)
