@@ -1,6 +1,6 @@
 CC     = gcc
 CFLAGS = -Wall -Werror -g -I../
-EXES   = $(shell find . -name '*.c' | sed 's/\.c//g')
+EXES   = $(basename $(wildcard *.c))
 
 all: $(EXES)
 clean:
