@@ -221,19 +221,19 @@ void tmux_event_loop( FILE* tmux_control_stream )
       HANDLE_EVENTS( &window_renamed_handlers, window_id, name );
       free( name );
     }
-    else if ( sscanf( s, "%%layout-change @%u %m[^\n]", &window_id, &layout ) == 2 )
+    else if( sscanf( s, "%%layout-change @%u %m[^\n]", &window_id, &layout ) == 2 )
     {
       /* tmux layout change event */
       HANDLE_EVENTS( &layout_change_handlers, window_id, layout );
       free( layout );
     }
-    else if ( sscanf( s, "%%session-changed $%u %m[^\n]", &session_id, &name ) == 2 )
+    else if( sscanf( s, "%%session-changed $%u %m[^\n]", &session_id, &name ) == 2 )
     {
       /* tmux session changed event */
       HANDLE_EVENTS( &session_changed_handlers, session_id, name );
       free( name );
     }
-    else if ( sscanf( s, "%%session-renamed $%u %m[^\n]", &session_id, &name ) == 2 )
+    else if( sscanf( s, "%%session-renamed $%u %m[^\n]", &session_id, &name ) == 2 )
     {
       /* tmux session renamed event */
       HANDLE_EVENTS( &session_renamed_handlers, session_id, name );
