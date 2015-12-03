@@ -53,6 +53,13 @@ struct OnSessionRenamed
   void* ctxt;
 };
 
+struct OnCommandResponse
+{
+  LIST_ENTRY( OnCommandResponse ) entries;
+  void  (*handle)( const char* response, void* ctxt );
+  void* ctxt;
+};
+
 void tmux_event_init( );
 
 void register_pane_output_handler( struct OnPaneOutput* handler );

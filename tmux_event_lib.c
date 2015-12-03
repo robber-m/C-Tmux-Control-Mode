@@ -80,7 +80,7 @@ LIST_HEAD( WindowCloseEventHandlerList, OnWindowClose ) window_close_handlers;
 
 /* window renamed event definitions */
 // unsigned int window_id;  -- defined above
-char* name;
+char*        name;
 LIST_HEAD( WindowRenamedEventHandlerList, OnWindowRenamed ) window_renamed_handlers;
 
 /* layout change event definitions */
@@ -90,13 +90,18 @@ LIST_HEAD( LayoutChangeEventHandlerList, OnLayoutChange ) layout_change_handlers
 
 /* session changed event definitions */
 unsigned int session_id;
-// char*     name;          -- defined above
+// char*        name;       -- defined above
 LIST_HEAD( SessionChangedEventHandlerList, OnSessionChanged ) session_changed_handlers;
 
 /* session changed event definitions */
 // unsigned int session_id; -- defined above
 // char*        name;       -- defined above
 LIST_HEAD( SessionRenamedEventHandlerList, OnSessionRenamed ) session_renamed_handlers;
+
+/* command response event definitions */
+unsigned int timestamp;
+unsigned int cmd_number;
+LIST_HEAD( CommandResponseEventHandlerList, OnCommandResponse ) command_response_handlers;
 
 /* ---- END DEFINITIONS ---- */
 
@@ -109,6 +114,7 @@ void tmux_event_init( )
   LIST_INIT( &layout_change_handlers );
   LIST_INIT( &session_changed_handlers );
   LIST_INIT( &session_renamed_handlers );
+  LIST_INIT( &command_response_handlers );
 }
 
 /* ---- EVENT REGISTRATION FUNCTIONS ---- */
@@ -221,29 +227,51 @@ void tmux_event_loop( FILE* tmux_control_stream )
       HANDLE_EVENTS( &window_renamed_handlers, window_id, name );
       free( name );
     }
-    else if ( sscanf( s, "%%layout-change @%u %m[^\n]", &window_id, &layout ) == 2 )
+    else if( sscanf( s, "%%layout-change @%u %m[^\n]", &window_id, &layout ) == 2 )
     {
       /* tmux layout change event */
       HANDLE_EVENTS( &layout_change_handlers, window_id, layout );
       free( layout );
     }
-    else if ( sscanf( s, "%%session-changed $%u %m[^\n]", &session_id, &name ) == 2 )
+    else if( sscanf( s, "%%session-changed $%u %m[^\n]", &session_id, &name ) == 2 )
     {
       /* tmux session changed event */
       HANDLE_EVENTS( &session_changed_handlers, session_id, name );
       free( name );
     }
-    else if ( sscanf( s, "%%session-renamed $%u %m[^\n]", &session_id, &name ) == 2 )
+    else if( sscanf( s, "%%session-renamed $%u %m[^\n]", &session_id, &name ) == 2 )
     {
       /* tmux session renamed event */
       HANDLE_EVENTS( &session_renamed_handlers, session_id, name );
       free( name );
+    }
+    else if( sscanf( s, "%%begin %u %u %*u", timestamp, command_number ) == 2 )
+    /* TODO: Should I do this check with strncmp instead? */
+    {
+      /* tmux begin command response event */
+      /* NOTE: All commands should also enqueue a response handler prior to
+       *       sending the command. The appropriate response handler to use would
+       *       be the first one we enqueued (FIFO). Also note that we may need to
+       *       perform some synchronization around enqueuing the response handler
+       *       and sending the command to tmux if we eventually allow multihreaded
+       *       command submission. */
+      
+      /* TODO: Handle the command response line by line sending to the tail
+       * command response handler if the handler is not NULL */ 
+      /* TODO: When we receive an end message, dequeue the command response handler */
+      /* TODO: If we receive an error message, need to return the error somehow */
+
     }
     else {
       /* unhandled event */
       /* TODO: unlinked-window-add */
       /* TODO: sessions-changed */
       /* TODO: exit */
+      /* TODO: Handle responses to user specified commands.
+       *       My current thought is to add a queue for sending/receiving commands.
+       *       If a receive handler is provided with the command to send, the
+       *       receive handler will be added to the receive handling queue.
+       *       Each receive handler will be executed once then removed from the queue. */
     }
   }
 }
