@@ -101,7 +101,7 @@ LIST_HEAD( SessionRenamedEventHandlerList, OnSessionRenamed ) session_renamed_ha
 /* command response event definitions */
 unsigned int timestamp;
 unsigned int cmd_number;
-LIST_HEAD( CommandResponseEventHandlerList, OnCommandResponse ) command_response_handlers;
+SIMPLEQ_HEAD( CommandResponseEventHandlerList, OnCommandResponse ) command_response_handlers;
 
 /* ---- END DEFINITIONS ---- */
 
@@ -114,7 +114,7 @@ void tmux_event_init( )
   LIST_INIT( &layout_change_handlers );
   LIST_INIT( &session_changed_handlers );
   LIST_INIT( &session_renamed_handlers );
-  LIST_INIT( &command_response_handlers );
+  SIMPLEQ_INIT( &command_response_handlers );
 }
 
 /* ---- EVENT REGISTRATION FUNCTIONS ---- */
@@ -191,6 +191,19 @@ void unregister_session_renamed_handler( struct OnSessionRenamed* handler )
 
 /* ---- END EVENT REGISTRATION FUNCTIONS ---- */
 
+void send_tmux_command( FILE* tmux_control_input_stream,
+                        const char* command,
+                        struct OnCommandResponse* handler ) {
+  /* Insert the command response into the list */
+  /* NOTE: Until I decide what to do, I am assuming handler is not NULL */
+  /* TODO: Decide what I want to do about commands that don't expect a response */
+  /* TODO: Should I allocate a temporary OnCommandResponse object with a NULL
+   *       handler? How do I know if I can free the object after dequeuing it? */
+  SIMPLEQ_INSERT_TAIL( &command_response_handlers, handler, field );
+  fputs( command, tmux_control_input_stream );
+  fflush( tmux_control_input_stream );
+}
+
 #define HANDLE_EVENTS( head, ... ) do {                                       \
   __typeof__( (head)->lh_first ) handler;                                     \
   LIST_FOREACH( handler, head, entries )                                      \
@@ -199,11 +212,35 @@ void unregister_session_renamed_handler( struct OnSessionRenamed* handler )
   }                                                                           \
 } while(0)
 
+/* NOTE: For now, the handler will need to handle malformed input */
+void handle_command_response( FILE* tmux_control_output_stream )
+{
+  while( fgets( s, sizeof( s ), tmux_control_output_stream ) != NULL )
+  {
+    if( sscanf( s, "%%end %u %u %*u", timestamp, command_number ) == 2 )
+    {
+      /* return to normal event processing loop */
+      return;
+    }
+    else if( sscanf( s, "%%error %u %u %*u", timestamp, command_number ) == 2 )
+    {
+      /* TODO: What do I do with errors? */
+      /* return to normal event processing loop */
+      return;
+    }
+    else {
+      /* pass the command response to the handler at the front of the queue */
+      /* NOTE: Passing responses line by line for now */
+      SIMPLEQ_FIRST( &command_response_handlers )->handle( s, ctxt );
+    }
+  }
+}
+
 /* NOTE: Would it be better to do this if/else stuff with a hash on the first
  * word in the line and a switch statement? */
-void tmux_event_loop( FILE* tmux_control_stream )
+void tmux_event_loop( FILE* tmux_control_output_stream )
 {
-  while( fgets( s, sizeof( s ), tmux_control_stream ) != NULL )
+  while( fgets( s, sizeof( s ), tmux_control_output_stream ) != NULL )
   {
     if( sscanf( s, "%%output %%%u%*c%m[^\n]", &pane_id, &output ) == 2 )
     {
@@ -256,11 +293,11 @@ void tmux_event_loop( FILE* tmux_control_stream )
        *       and sending the command to tmux if we eventually allow multihreaded
        *       command submission. */
       
-      /* TODO: Handle the command response line by line sending to the tail
-       * command response handler if the handler is not NULL */ 
-      /* TODO: When we receive an end message, dequeue the command response handler */
       /* TODO: If we receive an error message, need to return the error somehow */
-
+      /* pass the command response to the response handler line by line */
+      handle_command_response( tmux_control_output_stream );
+      /* we have handled the command response so we need to dequeue the handler */
+      SIMPLEQ_REMOVE_HEAD( &command_response_handlers );
     }
     else {
       /* unhandled event */

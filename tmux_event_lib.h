@@ -4,8 +4,7 @@
 #include "compat/queue.h"
 #include <stdio.h>
 
-struct OnPaneOutput
-{
+struct OnPaneOutput {
   LIST_ENTRY( OnPaneOutput ) entries;
   void  (*handle)( unsigned int pane_id, const char* output, void* ctxt );
   void* ctxt;
@@ -80,6 +79,10 @@ void unregister_session_changed_handler( struct OnSessionChanged* handler );
 void register_session_renamed_handler( struct OnSessionRenamed* handler );
 void unregister_session_renamed_handler( struct OnSessionRenamed* handler );
 
-void tmux_event_loop( FILE* tmux_control_file_stream );
+void send_tmux_cmd( FILE* tmux_control_input_stream,
+                    const char* command,
+                    struct OnCommandResponse* handler );
+
+void tmux_event_loop( FILE* tmux_control_output_stream );
 
 #endif // INCLUDED_TMUX_EVENT_LIB_H
