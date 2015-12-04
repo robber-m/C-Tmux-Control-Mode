@@ -100,7 +100,7 @@ LIST_HEAD( SessionRenamedEventHandlerList, OnSessionRenamed ) session_renamed_ha
 
 /* command response event definitions */
 unsigned int timestamp;
-unsigned int cmd_number;
+unsigned int command_number;
 SIMPLEQ_HEAD( CommandResponseEventHandlerList, OnCommandResponse ) command_response_handlers;
 
 /* ---- END DEFINITIONS ---- */
@@ -199,7 +199,7 @@ void send_tmux_command( FILE* tmux_control_input_stream,
   /* TODO: Decide what I want to do about commands that don't expect a response */
   /* TODO: Should I allocate a temporary OnCommandResponse object with a NULL
    *       handler? How do I know if I can free the object after dequeuing it? */
-  SIMPLEQ_INSERT_TAIL( &command_response_handlers, handler, field );
+  SIMPLEQ_INSERT_TAIL( &command_response_handlers, handler, entries );
   fputs( command, tmux_control_input_stream );
   fflush( tmux_control_input_stream );
 }
@@ -217,12 +217,12 @@ void handle_command_response( FILE* tmux_control_output_stream )
 {
   while( fgets( s, sizeof( s ), tmux_control_output_stream ) != NULL )
   {
-    if( sscanf( s, "%%end %u %u %*u", timestamp, command_number ) == 2 )
+    if( sscanf( s, "%%end %u %u %*u", &timestamp, &command_number ) == 2 )
     {
       /* return to normal event processing loop */
       return;
     }
-    else if( sscanf( s, "%%error %u %u %*u", timestamp, command_number ) == 2 )
+    else if( sscanf( s, "%%error %u %u %*u", &timestamp, &command_number ) == 2 )
     {
       /* TODO: What do I do with errors? */
       /* return to normal event processing loop */
@@ -231,7 +231,8 @@ void handle_command_response( FILE* tmux_control_output_stream )
     else {
       /* pass the command response to the handler at the front of the queue */
       /* NOTE: Passing responses line by line for now */
-      SIMPLEQ_FIRST( &command_response_handlers )->handle( s, ctxt );
+      struct OnCommandResponse* handler = SIMPLEQ_FIRST( &command_response_handlers );
+      handler->handle( s, handler->ctxt );
     }
   }
 }
@@ -282,7 +283,7 @@ void tmux_event_loop( FILE* tmux_control_output_stream )
       HANDLE_EVENTS( &session_renamed_handlers, session_id, name );
       free( name );
     }
-    else if( sscanf( s, "%%begin %u %u %*u", timestamp, command_number ) == 2 )
+    else if( sscanf( s, "%%begin %u %u %*u", &timestamp, &command_number ) == 2 )
     /* TODO: Should I do this check with strncmp instead? */
     {
       /* tmux begin command response event */
@@ -297,7 +298,7 @@ void tmux_event_loop( FILE* tmux_control_output_stream )
       /* pass the command response to the response handler line by line */
       handle_command_response( tmux_control_output_stream );
       /* we have handled the command response so we need to dequeue the handler */
-      SIMPLEQ_REMOVE_HEAD( &command_response_handlers );
+      SIMPLEQ_REMOVE_HEAD( &command_response_handlers, entries );
     }
     else {
       /* unhandled event */

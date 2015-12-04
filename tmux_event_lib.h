@@ -54,7 +54,7 @@ struct OnSessionRenamed
 
 struct OnCommandResponse
 {
-  LIST_ENTRY( OnCommandResponse ) entries;
+  SIMPLEQ_ENTRY( OnCommandResponse ) entries;
   void  (*handle)( const char* response, void* ctxt );
   void* ctxt;
 };
