@@ -244,6 +244,17 @@ void handle_command_response( FILE* tmux_control_output_stream )
  * word in the line and a switch statement? */
 void tmux_event_loop( FILE* tmux_control_output_stream )
 {
+  /* TODO: Do I need to register a few fake command response handlers because
+   *       tmux sends me a few random begin and ends? I don't like that...
+   *       Maybe I should issue a command of my own with a specific expected
+   *       response body that will let me identify a time when it is okay to
+   *       start using the response handler queue. */
+  /* TODO: Register a command with a known expected output. The handler will
+   *       determine whether or not the output for the command is the output
+   *       we are expecting from our sync command. If it is the output we
+   *       expect, set a flag that indicates it is okay to start removing
+   *       command response handlers from the queue because we have finally
+   *       synchronized our output stream with our queued response handlers */
   while( fgets( s, sizeof( s ), tmux_control_output_stream ) != NULL )
   {
     if( sscanf( s, "%%output %%%u%*c%m[^\n]", &pane_id, &output ) == 2 )
