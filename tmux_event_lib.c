@@ -228,11 +228,14 @@ void handle_command_response( FILE* tmux_control_output_stream )
       /* return to normal event processing loop */
       return;
     }
-    else {
+    else if( !SIMPLEQ_EMPTY( &command_response_handlers ) ) {
       /* pass the command response to the handler at the front of the queue */
       /* NOTE: Passing responses line by line for now */
       struct OnCommandResponse* handler = SIMPLEQ_FIRST( &command_response_handlers );
       handler->handle( s, handler->ctxt );
+    }
+    else {
+      /* TODO: What do I do with errors? */
     }
   }
 }
@@ -297,8 +300,10 @@ void tmux_event_loop( FILE* tmux_control_output_stream )
       /* TODO: If we receive an error message, need to return the error somehow */
       /* pass the command response to the response handler line by line */
       handle_command_response( tmux_control_output_stream );
-      /* we have handled the command response so we need to dequeue the handler */
-      SIMPLEQ_REMOVE_HEAD( &command_response_handlers, entries );
+      if( !SIMPLEQ_EMPTY( &command_response_handlers ) ) {
+        /* we have handled the command response so we need to dequeue the handler */
+        SIMPLEQ_REMOVE_HEAD( &command_response_handlers, entries );
+      }
     }
     else {
       /* unhandled event */
