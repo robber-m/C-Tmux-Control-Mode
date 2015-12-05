@@ -1,5 +1,5 @@
 CC     = gcc
-CFLAGS = -Wall -Werror -g -I../
+CFLAGS = -Wall -Werror -ggdb3 -I../
 EXES   = $(basename $(wildcard *.c))
 
 all: $(EXES)

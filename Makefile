@@ -1,4 +1,4 @@
-CFLAGS=-Wall -Werror -g
+CFLAGS=-Wall -Werror -ggdb3
 
 .PHONY: examples                                                                                                                                                                                                                                                                      
 examples: tmux_event_lib.o
