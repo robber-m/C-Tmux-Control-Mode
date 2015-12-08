@@ -1,5 +1,7 @@
 #include "tmux_event_lib.h"
 #include <stdlib.h>
+#include <string.h>
+#include <stdbool.h>
 /* I just want to scope out a basic event system which speaks the tmux control
  * mode text protocol. Maybe I will eventually use this abstraction for i3mux? */
 
@@ -61,6 +63,9 @@ CONTROL MODE
 #endif
 
 /* ---- DEFINITIONS ---- */
+
+/* initialization */
+bool         command_response_handler_queue_is_synchronized_with_output = false;
 
 /* stream read definitions */
 char         s[ BUFSIZ ]; // stream read buffer
@@ -235,7 +240,7 @@ void handle_command_response( FILE* tmux_control_output_stream )
       handler->handle( s, handler->ctxt );
     }
     else {
-      /* TODO: What do I do with errors? */
+      /* TODO: If SIMPLEQ_EMPTY is true, we have a bug */
     }
   }
 }
@@ -311,10 +316,15 @@ void tmux_event_loop( FILE* tmux_control_output_stream )
       /* TODO: If we receive an error message, need to return the error somehow */
       /* pass the command response to the response handler line by line */
       handle_command_response( tmux_control_output_stream );
-      if( !SIMPLEQ_EMPTY( &command_response_handlers ) ) {
+      if( __builtin_expect( command_response_handler_queue_is_synchronized_with_output, 1 )
+          && !SIMPLEQ_EMPTY( &command_response_handlers ) ) {
+        /* TODO: If SIMPLEQ_EMPTY is true, we have a bug */
         /* we have handled the command response so we need to dequeue the handler */
         SIMPLEQ_REMOVE_HEAD( &command_response_handlers, entries );
       }
+      /* NOTE: For now we will say we are synchronized after we process the first
+       * command response. In the future this will need to be corrected */
+      command_response_handler_queue_is_synchronized_with_output = true;
     }
     else {
       /* unhandled event */
